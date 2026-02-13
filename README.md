@@ -25,7 +25,7 @@
 wget https://raw.githubusercontent.com/TiaraBasori/InstallTeleBox/refs/heads/main/telebox.sh -O telebox.sh && chmod +x telebox.sh && bash telebox.sh
 ```
 ### 安装到Docker容器内
-Docker版本脚本作者: https://github.com/Seikolove
+Docker版本脚本作者: github.com/Seikolove
 ```bash
 wget https://raw.githubusercontent.com/TiaraBasori/InstallTeleBox/refs/heads/main/docker_telebox.sh -O docker_telebox.sh && chmod +x docker_telebox.sh && bash docker_telebox.sh
 ```
@@ -48,14 +48,6 @@ pm2 restart telebox
 pm2 stop telebox
 ```
 
-## 主要功能
-
-- 🚀 **自动安装**: 全自动完成环境配置和软件安装
-- 🔒 **安全登录**: 使用 screen 会话安全处理 Telegram 登录
-- 📦 **依赖管理**: 自动安装所有必要的系统依赖和 Node.js 包
-- 🔄 **进程守护**: 使用 PM2 确保服务持续运行
-- 🔧 **易于管理**: 提供完善的服务管理功能
-
 ## 注意事项
 
 1. 安装前请确保服务器可以正常访问 GitHub 和 Telegram 服务
@@ -72,5 +64,5 @@ pm2 stop telebox
 
 ---
 
-**项目地址**: [https://github.com/TeleBoxDev/TeleBox](https://github.com/TeleBoxDev/TeleBox)  
+**项目地址**: [TeleBoxDev/TeleBox](https://github.com/TeleBoxDev/TeleBox)  
 **脚本维护**: [TiaraBasori/InstallTeleBox](https://github.com/TiaraBasori/InstallTeleBox)
