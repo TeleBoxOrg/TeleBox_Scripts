@@ -36,14 +36,7 @@ command_exists() {
 
 # 检查 root 权限
 check_root() {
-    if [[ $EUID -eq 0 ]]; then
-        log_warning "不建议使用 root 权限运行本脚本"
-        read -p "是否继续? [y/N] " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
-        fi
-    fi
+    return 0
 }
 
 # 系统检测
@@ -311,19 +304,52 @@ setup_service() {
     log_success "服务配置完成"
 }
 
+prompt_pm2_setup() {
+    local install_dir="$1"
+
+    echo ""
+    read -p "是否现在设置 PM2 后台运行? [Y/n] " -n 1 -r
+    echo
+
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        log_info "已跳过 PM2 配置"
+        echo ""
+        echo "如需稍后手动设置，可执行："
+        echo "  npm install -g pm2"
+        echo "  cd $install_dir && pm2 start ecosystem.config.cjs && pm2 save"
+        return 1
+    fi
+
+    install_pm2
+    setup_service "$install_dir"
+    return 0
+}
+
 # 显示使用说明
 show_usage() {
     local install_dir="$1"
+    local pm2_enabled="${2:-false}"
     
     echo ""
     echo "🎉 TeleBox 安装完成！"
     echo ""
-    echo "📋 使用命令:"
-    echo "   pm2 status                   # 查看状态"
-    echo "   pm2 logs telebox             # 查看日志"
-    echo "   pm2 restart telebox          # 重启服务"
-    echo ""
     echo "📁 项目目录: $install_dir"
+    echo ""
+
+    if [[ "$pm2_enabled" == "true" ]]; then
+        echo "📋 PM2 使用命令:"
+        echo "   pm2 status                   # 查看状态"
+        echo "   pm2 logs telebox             # 查看日志"
+        echo "   pm2 restart telebox          # 重启服务"
+    else
+        echo "📋 启动方式:"
+        echo "   cd $install_dir && npm start # 前台启动 TeleBox"
+        echo ""
+        echo "📋 如需 PM2 后台运行:"
+        echo "   npm install -g pm2"
+        echo "   cd $install_dir && pm2 start ecosystem.config.cjs && pm2 save"
+    fi
+
     echo ""
 }
 
@@ -397,6 +423,7 @@ show_logs() {
 # 主安装函数
 main_installation() {
     local install_dir="${1:-$HOME/telebox}"
+    local pm2_enabled="false"
     
     welcome
     check_root
@@ -412,9 +439,11 @@ main_installation() {
         first_time_setup
     fi
     
-    install_pm2
-    setup_service "$install_dir"
-    show_usage "$install_dir"
+    if prompt_pm2_setup "$install_dir"; then
+        pm2_enabled="true"
+    fi
+
+    show_usage "$install_dir" "$pm2_enabled"
 }
 
 # 卸载函数

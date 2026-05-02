@@ -251,10 +251,8 @@ start_docker_daemon() {
     echo "=========================================="
     echo
     
-    # 删除交互式容器
     docker rm -f "$container_name" > /dev/null 2>&1
     
-    # 第三步：后台运行
     echo "正在以后台模式启动 TeleBox . . ."
     docker run -d --name "$container_name" --restart unless-stopped \
         -v "/root/Docker_Telebox/$container_name":/root --pull always debian:12 \
@@ -291,13 +289,38 @@ start_docker_daemon() {
     echo
 }
 
+finish_without_pm2() {
+    echo
+    echo "=========================================="
+    echo "TeleBox 安装完成！"
+    echo "=========================================="
+    echo
+    echo "已跳过 PM2 后台运行设置。"
+    echo "当前已完成首次登录，数据已保存在：/root/Docker_Telebox/$container_name"
+    echo
+    echo "如需稍后启用后台运行，可重新执行脚本并选择安装，或参考以下命令自行启动容器："
+    echo "  docker run -d --name $container_name --restart unless-stopped -v /root/Docker_Telebox/$container_name:/root --pull always debian:12 bash -lc 'set -e; apt-get update; apt-get install -y curl git build-essential ca-certificates gnupg sudo; update-ca-certificates; curl -fsSL https://deb.nodesource.com/setup_24.x | bash -; apt-get install -y nodejs; npm install -g pm2; if [ ! -d /root/telebox/.git ]; then git clone https://github.com/TeleBoxOrg/TeleBox.git /root/telebox; fi; cd /root/telebox; npm install; exec pm2-runtime start npm --name telebox -- start'"
+    echo
+}
+
 start_installation() {
     welcome
     docker_check
     access_check
     build_docker
     start_docker_interactive
-    start_docker_daemon
+
+    printf "是否现在设置 PM2 后台运行? [Y/n]: "
+    read -r enable_pm2 <&1
+
+    case $enable_pm2 in
+        [nN][oO] | [nN])
+            finish_without_pm2
+            ;;
+        *)
+            start_docker_daemon
+            ;;
+    esac
 }
 
 cleanup() {
