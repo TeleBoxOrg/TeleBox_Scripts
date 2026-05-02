@@ -2,7 +2,7 @@
 
 # TeleBox 安装脚本
 # 版本: 1.0.0
-# 项目: https://github.com/TeleBoxDev/TeleBox
+# 项目: https://github.com/TeleBoxOrg/TeleBox
 # Coding by Telegram @Tiara_Basori
 
 # 颜色定义
@@ -70,16 +70,8 @@ check_system() {
         PKG_MANAGER="apt"
         UPDATE_CMD="sudo apt update"
         INSTALL_CMD="sudo apt install -y"
-    elif command_exists yum; then
-        PKG_MANAGER="yum"
-        UPDATE_CMD="sudo yum update -y"
-        INSTALL_CMD="sudo yum install -y"
-    elif command_exists dnf; then
-        PKG_MANAGER="dnf"
-        UPDATE_CMD="sudo dnf update -y"
-        INSTALL_CMD="sudo dnf install -y"
     else
-        log_error "不支持的包管理器"
+        log_error "当前脚本仅支持 Debian / Ubuntu 的 apt 安装流程"
         exit 1
     fi
 }
@@ -116,13 +108,7 @@ install_system_deps() {
     
     case $PKG_MANAGER in
         "apt")
-            $INSTALL_CMD curl git build-essential python3 make gcc g++ screen || {
-                log_error "系统依赖安装失败"
-                exit 1
-            }
-            ;;
-        "yum"|"dnf")
-            $INSTALL_CMD curl git make gcc gcc-c++ kernel-devel screen || {
+            $INSTALL_CMD curl git build-essential screen || {
                 log_error "系统依赖安装失败"
                 exit 1
             }
@@ -140,27 +126,25 @@ install_nodejs() {
         NODE_VERSION=$(node --version 2>/dev/null | cut -d'v' -f2)
         if [ -n "$NODE_VERSION" ]; then
             MAJOR_VERSION=$(echo "$NODE_VERSION" | cut -d'.' -f1)
-            if [ "$MAJOR_VERSION" -ge 18 ] 2>/dev/null; then
+            if [ "$MAJOR_VERSION" -ge 24 ] 2>/dev/null; then
                 log_success "Node.js 版本符合要求"
                 return 0
             fi
         fi
     fi
     
-    log_info "安装 Node.js 20.x..."
+    log_info "安装 Node.js 24.x..."
     
     case $PKG_MANAGER in
         "apt")
-            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs || {
+            curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - && sudo apt-get install -y nodejs || {
                 log_error "Node.js 安装失败"
                 exit 1
             }
             ;;
-        "yum"|"dnf")
-            curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo -E bash - && $INSTALL_CMD nodejs || {
-                log_error "Node.js 安装失败"
-                exit 1
-            }
+        *)
+            log_error "当前脚本仅支持基于 Linux 包管理器的 apt 安装流程"
+            exit 1
             ;;
     esac
     
@@ -190,7 +174,7 @@ clone_project() {
         fi
     fi
     
-    git clone https://github.com/TeleBoxDev/TeleBox.git "$install_dir" && cd "$install_dir" || {
+    git clone https://github.com/TeleBoxOrg/TeleBox.git "$install_dir" && cd "$install_dir" || {
         log_error "项目下载失败"
         exit 1
     }
@@ -241,9 +225,10 @@ safe_login_screen() {
     
     echo ""
     echo "请按以下步骤操作："
-    echo "  1. 输入手机号（国际格式，如 +8618888888888）"
-    echo "  2. 输入验证码"
-    echo "  3. 登录成功后按 Ctrl+A 然后按 D 返回"
+    echo "  1. 输入 API ID 和 API Hash"
+    echo "  2. 按提示选择二维码登录或手机号登录"
+    echo "  3. 如果使用手机号登录，依次输入手机号、验证码和 2FA 密码（如有）"
+    echo "  4. 登录成功后按 Ctrl+A 然后按 D 返回"
     echo ""
     
     read -p "按 Enter 开始登录 " </dev/tty
@@ -294,28 +279,14 @@ install_pm2() {
 create_pm2_config() {
     local install_dir="$1"
     
+    local official_pm2_config="$install_dir/ecosystem.config.cjs"
+
     mkdir -p "$install_dir/logs"
-    
-    cat > "$install_dir/ecosystem.config.js" << EOF
-module.exports = {
-  apps: [{
-    name: 'telebox',
-    script: 'npm',
-    args: 'start',
-    cwd: '$install_dir',
-    interpreter: 'none',
-    env: {
-      NODE_ENV: 'production'
-    },
-    log_file: '$install_dir/logs/combined.log',
-    error_file: '$install_dir/logs/error.log',
-    out_file: '$install_dir/logs/out.log',
-    merge_logs: true,
-    time: true,
-    max_memory_restart: '500M'
-  }]
-}
-EOF
+
+    if [ ! -f "$official_pm2_config" ]; then
+        log_error "未找到官方 PM2 配置: $official_pm2_config"
+        exit 1
+    fi
 }
 
 # 配置系统服务
@@ -326,7 +297,7 @@ setup_service() {
     
     create_pm2_config "$install_dir"
     
-    cd "$install_dir" && pm2 start ecosystem.config.js && pm2 save || {
+    cd "$install_dir" && pm2 start ecosystem.config.cjs && pm2 save || {
         log_error "服务启动失败"
         exit 1
     }
@@ -364,7 +335,7 @@ reset_pm2_config() {
     
     pm2 delete telebox 2>/dev/null || true
     create_pm2_config "$install_dir"
-    cd "$install_dir" && pm2 start ecosystem.config.js && pm2 save || {
+    cd "$install_dir" && pm2 start ecosystem.config.cjs && pm2 save || {
         log_error "重置失败"
         return 1
     }
